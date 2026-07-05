@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading;
 using System.Windows.Forms;
 
@@ -44,7 +45,14 @@ namespace DesktopClient
 
             OnClientFound = new AsyncCallback((result) =>
             {
-                _clientOfSecondDevice = _listener.EndAcceptBluetoothClient(result);
+                try {
+                    _clientOfSecondDevice = _listener.EndAcceptBluetoothClient(result);
+                }
+                catch (SocketException)
+                {
+                    return; //happens when app is closed during waiting for connection
+                }
+
                 connectedToPhone = true;
 
                 SendScreenDimensions(_clientOfSecondDevice);
@@ -88,8 +96,16 @@ namespace DesktopClient
             float xPercent = 0, yPercent = 0;
             while (connectedToPhone)
             {
+                int firstByteVal;
+                try {
+                    firstByteVal = cl.GetStream().ReadByte();
+                }
+                catch (IOException)
+                {
+                    connectedToPhone = listenerStarted = false;
+                    break;
+                }
 
-                int firstByteVal = cl.GetStream().ReadByte();
                 if(firstByteVal == -1) { continue; }
 
                 byte[] receiveBuffer;

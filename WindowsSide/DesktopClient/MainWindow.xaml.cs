@@ -51,6 +51,8 @@ namespace DesktopClient
             {
                 this.Dispatcher.Invoke(() => 
                 { 
+                    if (this.closeConfirmed) { return; } //case when window is closed during waiting for connection
+
                     canvas.Background = Brushes.White;
                     closeConnectionBtn.IsEnabled = true;
                     waitStatusText.Text = string.Empty;
