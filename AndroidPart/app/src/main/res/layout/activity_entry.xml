@@ -22,28 +22,26 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Phone to mouse converter"
-                android:textSize="28dp"/>
+                android:textSize="28sp"/>
         <TextView
                 android:id="@+id/no_blt_warning_textview"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textStyle="bold"
                 android:text="@string/screen_no_blt"
-                android:textSize="24dp"
+                android:textSize="24sp"
                 android:visibility="gone"/>
     </LinearLayout>
-
-
-
 
     <TextView android:layout_width="wrap_content"
               android:layout_height="wrap_content"
               android:text="@string/entry_target"
-                  app:layout_constraintTop_toTopOf="@id/menu_btns_container"
-              app:layout_constraintLeft_toLeftOf="parent"
+              android:textAlignment="textEnd"
+              app:layout_constraintTop_toTopOf="@id/menu_btns_container"
               app:layout_constrainedWidth="true"
+              style="@style/TargetDeviceTitle"
               app:layout_constraintRight_toLeftOf="@id/menu_btns_container"
-              android:layout_marginLeft="20dp"
+              android:layout_marginEnd="@dimen/target_device_title_margin"
               android:textSize="16sp"/>
 
     <LinearLayout

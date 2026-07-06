@@ -2,6 +2,7 @@ package com.sanikshomemade.phonetomouse.activities;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -9,6 +10,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.widget.*;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +21,7 @@ import com.sanikshomemade.phonetomouse.PrefUtils;
 import com.sanikshomemade.phonetomouse.R;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
 
@@ -131,13 +135,16 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
                     cursorBmpBase.getHeight()/scaleFactorNow, false);
             imgv.setImageBitmap(cursorBmpSized);
 
-            TextView progressText = view.findViewById(R.id.scale_value_text);
-            progressText.setText(Integer.toString(scaleFactorNow));
-
-            SeekBar _seekbar = view.findViewById(R.id.cursor_scale_seekbar);
             int progressMin = getResources().getInteger(R.integer.cursor_scale_min),
                     progressMax = getResources().getInteger(R.integer.cursor_scale_max);
-            _seekbar.setProgress(Build.VERSION.SDK_INT >= 26? scaleFactorNow : scaleFactorNow-progressMin);
+            int displayProgress = progressMax - scaleFactorNow + progressMin;
+
+            TextView progressText = view.findViewById(R.id.scale_value_text);
+            progressText.setText(String.format(Locale.getDefault(),"%d", displayProgress));
+
+            SeekBar _seekbar = view.findViewById(R.id.cursor_scale_seekbar);
+
+            _seekbar.setProgress(Build.VERSION.SDK_INT >= 26? displayProgress : displayProgress-progressMin);
             if(Build.VERSION.SDK_INT >= 26) {
                 _seekbar.setMin(progressMin);
                 _seekbar.setMax(progressMax);
@@ -149,16 +156,20 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
                 @Override
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                     cursorScaleChanged = true;
-                    int actualProgress = Build.VERSION.SDK_INT >= 26? progress : progress+progressMin;
+                    int scaleProgress = progressMax - progress;
+                    if (Build.VERSION.SDK_INT >= 26) {
+                        scaleProgress += progressMin;
+                    }
+                    int displayProgress = Build.VERSION.SDK_INT >= 26? progress : progress+progressMin;
 
                     if(cursorBmpSized != null && !cursorBmpSized.isRecycled()) {
                         cursorBmpSized.recycle();
                     }
                     cursorBmpSized = Bitmap.createScaledBitmap(cursorBmpBase,
-                            cursorBmpBase.getWidth()/actualProgress,
-                            cursorBmpBase.getHeight()/actualProgress, false);
+                            cursorBmpBase.getWidth()/scaleProgress,
+                            cursorBmpBase.getHeight()/scaleProgress, false);
                     imgv.setImageBitmap(cursorBmpSized);
-                    progressText.setText(Integer.toString(actualProgress));
+                    progressText.setText(String.format(Locale.getDefault(),"%d", displayProgress));
                 }
                 @Override
                 public void onStartTrackingTouch(SeekBar seekBar) { }
@@ -216,7 +227,10 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
             super.onPause();
             if(cursorScaleChanged) {
                 SeekBar _seekbar = this.getView().findViewById(R.id.cursor_scale_seekbar);
-                int progressToSave = _seekbar.getProgress();
+                int progressMin = getResources().getInteger(R.integer.cursor_scale_min),
+                        progressMax = getResources().getInteger(R.integer.cursor_scale_max);
+
+                int progressToSave = progressMax - _seekbar.getProgress() + progressMin;
                 if(Build.VERSION.SDK_INT < 26) { progressToSave += getResources().getInteger(R.integer.cursor_scale_min); }
                 putToEditor(progressToSave, PrefUtils.PREFERRED_CURSOR_SCALE);
             }

@@ -23,6 +23,9 @@ public class BluetoothConnectionChangeReceiver extends BroadcastReceiver {
                 break;
             case BluetoothAdapter.STATE_ON:
             case BluetoothAdapter.STATE_OFF:
+                if (MyApp.currentBtDependentActivity == null) {
+                    break;
+                }
                 MyApp.currentBtDependentActivity.OnBluetoothStatusChanged(bluetoothState==BluetoothAdapter.STATE_ON);
                 break;
         }
