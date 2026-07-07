@@ -1,19 +1,20 @@
 package com.sanikshomemade.phonetomouse.activities;
 
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.widget.*;
 
-import androidx.appcompat.app.ActionBar;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 import android.view.View;
 import android.view.ViewGroup;
+
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.fragment.app.Fragment;
 import com.sanikshomemade.phonetomouse.MyApp;
 import com.sanikshomemade.phonetomouse.PrefUtils;
@@ -33,19 +34,11 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
-
-    }
-
-    private void ReplaceFragment(Context confContext) {
-        getSupportFragmentManager().beginTransaction()
-                .setReorderingAllowed(true)
-                .replace(R.id.settings_fragment_container, new OptionsFragment(confContext), null)
-                .commit();
     }
 
     public static class OptionsFragment extends Fragment {
         private class SettingSwitchCheckListener implements View.OnClickListener {
-            private String prefKey;
+            private final String prefKey;
             public SettingSwitchCheckListener(String prefKey) {
                 this.prefKey = prefKey;
             }
@@ -58,17 +51,16 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
         private Bitmap cursorBmpBase, cursorBmpSized;
         private boolean cursorScaleChanged = false;
         private SharedPreferences.Editor _editor;
-        private Context confContext = null;
 
         private  <T> void putToEditor(T value, String key) {
             if(_editor == null) {
                 _editor = PrefUtils.getEditor(this.getContext());
             }
 
-            if(Boolean.class.isInstance(value)) {
+            if(value instanceof Boolean) {
                 _editor.putBoolean(key, (boolean)value);
             }
-            else if(Integer.class.isInstance(value)) {
+            else if(value instanceof Integer) {
                 _editor.putInt(key, (int)value);
             }
         }
@@ -76,20 +68,32 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
         public OptionsFragment() {
             super(R.layout.fragment_settings);
         }
-        public OptionsFragment(Context confContext) {
-            this.confContext = confContext;
-        }
 
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-            if(confContext != null) {
-                return LayoutInflater.from(confContext).inflate(R.layout.fragment_settings, container, false);
+        private static void recycleBmpIfPossible(Bitmap bitmap) {
+            if (bitmap != null && !bitmap.isRecycled()) {
+                bitmap.recycle();
             }
-            return super.onCreateView(inflater, container, savedInstanceState);
+        }
+
+        private void initBaseCursorImage(Drawable drawable) {
+            recycleBmpIfPossible(cursorBmpBase);
+            cursorBmpBase = Bitmap.createBitmap(drawable.getIntrinsicWidth(),
+                    drawable.getIntrinsicHeight(),
+                    Bitmap.Config.ARGB_8888);
+            Canvas cursorCanvas = new Canvas(cursorBmpBase);
+            drawable.setBounds(0, 0, cursorCanvas.getWidth(), cursorCanvas.getHeight());
+            drawable.draw(cursorCanvas);
+        }
+
+        private void setScaledCursorToView(ImageView imageView, int squareScale) {
+            cursorBmpSized = Bitmap.createScaledBitmap(cursorBmpBase,
+                    cursorBmpBase.getWidth()/squareScale,
+                    cursorBmpBase.getHeight()/squareScale, true);
+            imageView.setImageBitmap(cursorBmpSized);
         }
 
         @Override
-        public void onViewCreated(View view, Bundle savedInstanceState) {
+        public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
             super.onViewCreated(view, savedInstanceState);
 
             ViewGroup themeUiContainer = view.findViewById(R.id.theme_ui);
@@ -132,17 +136,14 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
             }
 
             ImageView imgv = view.findViewById(R.id.cursor_demo_view);
-            cursorBmpBase = BitmapFactory.decodeResource(getResources(), R.drawable.cursor);
-            int scaleFactorNow = PrefUtils.getValueFromPrefs(this.getContext(), PrefUtils.PREFERRED_CURSOR_SCALE, 20);
-            cursorBmpSized = Bitmap.createScaledBitmap(cursorBmpBase,
-                    cursorBmpBase.getWidth()/scaleFactorNow,
-                    cursorBmpBase.getHeight()/scaleFactorNow, false);
-            imgv.setImageBitmap(cursorBmpSized);
-
+            initBaseCursorImage(AppCompatResources.getDrawable(requireContext(), R.drawable.cursor));
             int progressMin = getResources().getInteger(R.integer.cursor_scale_min),
                     progressMax = getResources().getInteger(R.integer.cursor_scale_max);
-            int displayProgress = progressMax - scaleFactorNow + progressMin;
 
+            int scaleFactorNow = PrefUtils.getValueFromPrefs(this.getContext(), PrefUtils.PREFERRED_CURSOR_SCALE, 20);
+            setScaledCursorToView(imgv, scaleFactorNow);
+
+            int displayProgress = progressMax - scaleFactorNow + progressMin;
             TextView progressText = view.findViewById(R.id.scale_value_text);
             progressText.setText(String.format(Locale.getDefault(),"%d", displayProgress));
 
@@ -166,13 +167,8 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
                     }
                     int displayProgress = Build.VERSION.SDK_INT >= 26? progress : progress+progressMin;
 
-                    if(cursorBmpSized != null && !cursorBmpSized.isRecycled()) {
-                        cursorBmpSized.recycle();
-                    }
-                    cursorBmpSized = Bitmap.createScaledBitmap(cursorBmpBase,
-                            cursorBmpBase.getWidth()/scaleProgress,
-                            cursorBmpBase.getHeight()/scaleProgress, false);
-                    imgv.setImageBitmap(cursorBmpSized);
+                    recycleBmpIfPossible(cursorBmpSized);
+                    setScaledCursorToView(imgv, scaleProgress);
                     progressText.setText(String.format(Locale.getDefault(),"%d", displayProgress));
                 }
                 @Override
@@ -204,16 +200,9 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
                     if(crtlangIndex != position) {
                         putToEditor(position, PrefUtils.PREFERRED_LANGUAGE);
                         String langCode = (String)parent.getAdapter().getItem(position);
-                        Context contextOverridden = PrefUtils.GetOverriddenLanguageContext(langCode, OptionsFragment.this.requireActivity());
-
-                        OptionsActivity parentAct = (OptionsActivity)requireActivity();
-                        ActionBar ab = parentAct.getSupportActionBar();
-                        if (ab != null) {
-                            ab.setTitle(contextOverridden.getResources().getString(R.string.entry_settings));
-                        }
-                        parentAct.ReplaceFragment(contextOverridden);
 
                         EntryActivity.setLangCodeForEntry(langCode.toLowerCase());
+                        requireActivity().recreate();
                     }
                 }
                 @Override
@@ -241,14 +230,21 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
                 int progressMin = getResources().getInteger(R.integer.cursor_scale_min),
                         progressMax = getResources().getInteger(R.integer.cursor_scale_max);
 
-                int progressToSave = progressMax - _seekbar.getProgress() + progressMin;
-                if(Build.VERSION.SDK_INT < 26) { progressToSave += getResources().getInteger(R.integer.cursor_scale_min); }
+                int progressToSave = progressMax - _seekbar.getProgress();
+                if(Build.VERSION.SDK_INT >= 26) { progressToSave += progressMin; }
                 putToEditor(progressToSave, PrefUtils.PREFERRED_CURSOR_SCALE);
             }
 
             if(_editor!=null) {
                 _editor.apply();
             }
+        }
+
+        @Override
+        public void onStop() {
+            super.onStop();
+            recycleBmpIfPossible(cursorBmpSized);
+            recycleBmpIfPossible(cursorBmpBase);
         }
     }
 }
