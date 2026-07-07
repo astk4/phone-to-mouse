@@ -2,7 +2,6 @@ package com.sanikshomemade.phonetomouse.activities;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -11,7 +10,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.widget.*;
 
-import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatDelegate;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,7 +55,6 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
             }
         }
 
-        private boolean _itemClickFirstLaunch = true;
         private Bitmap cursorBmpBase, cursorBmpSized;
         private boolean cursorScaleChanged = false;
         private SharedPreferences.Editor _editor;
@@ -82,7 +80,6 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
             this.confContext = confContext;
         }
 
-
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
             if(confContext != null) {
@@ -100,19 +97,26 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
             Switch themeSwitch = view.findViewById(R.id.theme_switch);
             if(Build.VERSION.SDK_INT >= 29) {
                 themeUiContainer.removeView(themeSwitch);
-                Context adapterCt = confContext == null? this.getContext() : confContext;
-                ArrayAdapter<CharSequence> adapter1 = ArrayAdapter.createFromResource(adapterCt, R.array.theme_option_names, android.R.layout.simple_spinner_dropdown_item);
+                ArrayAdapter<CharSequence> adapter1 = ArrayAdapter.createFromResource(this.getContext(), R.array.theme_option_names, android.R.layout.simple_spinner_dropdown_item);
                 theme_spinner.setAdapter(adapter1);
+                theme_spinner.setSelection(PrefUtils.getValueFromPrefs(this.getContext(), PrefUtils.THEME_OPTION, 0));
                 theme_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                        putToEditor(position, PrefUtils.THEME_OPTION);
-                        AppCompatDelegate.setDefaultNightMode(position==0? AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM : position);
+                        if (parent == null) {
+                            return;
+                        }
+                        int crtThemeIndex = PrefUtils.getValueFromPrefs(parent.getContext(), PrefUtils.THEME_OPTION, -1);
+                        int themeInRange = Math.max(0, crtThemeIndex);
+
+                        if (themeInRange != position) {
+                            putToEditor(position, PrefUtils.THEME_OPTION);
+                            AppCompatDelegate.setDefaultNightMode(position == 0 ? AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM : position);
+                        }
                     }
                     @Override
                     public void onNothingSelected(AdapterView<?> parent) { }
                 });
-                theme_spinner.setSelection(PrefUtils.getValueFromPrefs(this.getContext(), PrefUtils.THEME_OPTION, 0));
             }
             else {
                 themeUiContainer.removeView(theme_spinner);
@@ -192,18 +196,25 @@ public class OptionsActivity extends MyApp.MyMultilangCompatActivity {
             languageSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                    if(!_itemClickFirstLaunch) {
+                    if (parent == null) {
+                        return;
+                    }
+                    int crtlangIndex = PrefUtils.getValueFromPrefs(parent.getContext(), PrefUtils.PREFERRED_LANGUAGE, -1);
+
+                    if(crtlangIndex != position) {
                         putToEditor(position, PrefUtils.PREFERRED_LANGUAGE);
                         String langCode = (String)parent.getAdapter().getItem(position);
                         Context contextOverridden = PrefUtils.GetOverriddenLanguageContext(langCode, OptionsFragment.this.requireActivity());
 
                         OptionsActivity parentAct = (OptionsActivity)requireActivity();
-                        parentAct.getSupportActionBar().setTitle(contextOverridden.getResources().getString(R.string.entry_settings));
+                        ActionBar ab = parentAct.getSupportActionBar();
+                        if (ab != null) {
+                            ab.setTitle(contextOverridden.getResources().getString(R.string.entry_settings));
+                        }
                         parentAct.ReplaceFragment(contextOverridden);
 
                         EntryActivity.setLangCodeForEntry(langCode.toLowerCase());
                     }
-                    _itemClickFirstLaunch = false;
                 }
                 @Override
                 public void onNothingSelected(AdapterView<?> parent) { }
