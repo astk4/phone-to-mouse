@@ -5,6 +5,7 @@
     <dimen name="listview_height_ratio">0.3</dimen>
     <dimen name="standard_button_height">50dip</dimen>
     <dimen name="info_bottom_offset">80dp</dimen>
+    <dimen name="target_device_title_margin">0dp</dimen>
 
     <integer name="progress_seconds_max">12</integer>
     <integer name="cursor_scale_min">10</integer>

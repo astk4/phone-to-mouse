@@ -1,16 +1,15 @@
 package com.sanikshomemade.phonetomouse.bluetoothclasses;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.content.Context;
 import android.os.Handler;
-import android.renderscript.ScriptGroup;
 import android.widget.Toast;
 import com.sanikshomemade.phonetomouse.EffectsUtils;
-import com.sanikshomemade.phonetomouse.MyApp;
 import com.sanikshomemade.phonetomouse.PrefUtils;
 import com.sanikshomemade.phonetomouse.R;
 
@@ -51,9 +50,13 @@ public class BtUtils {
     static public int RefreshPairedDevices(Context ct) {
         Set<BluetoothDevice> setOfDevices = getAdapter(ct).getBondedDevices();
         pairedDevices.clear();
-        pairedDevices.addAll(setOfDevices);
+        for (BluetoothDevice bd : setOfDevices) { //not stream because min sdk 21 doesnt support them
+            if (CanBeComputer(bd)) {
+                pairedDevices.add(bd);
+            }
+        }
 
-        String savedMac = PrefUtils.getValueFromPrefs(ct, R.string.last_paired_mac, "");
+        String savedMac = PrefUtils.getValueFromPrefs(ct, PrefUtils.LAST_PAIRED_MAC, "");
         int counter = 0;
         for(BluetoothDevice bd : pairedDevices) {
             if(bd.getAddress().equals(savedMac)) {
@@ -93,7 +96,7 @@ public class BtUtils {
 
         try {
             socket.connect();
-            if(PrefUtils.getValueFromPrefs(ct, R.string.setting_connection_sound, false)) {
+            if(PrefUtils.getValueFromPrefs(ct, PrefUtils.CONNECT_SOUND_KEY, false)) {
                 EffectsUtils.PlayConnectionChangedSound(ct, true);
             }
             return true;
@@ -110,7 +113,7 @@ public class BtUtils {
 
         try {
             socket.close();
-            if(PrefUtils.getValueFromPrefs(ct, R.string.setting_connection_sound, false)) {
+            if(PrefUtils.getValueFromPrefs(ct, PrefUtils.CONNECT_SOUND_KEY, false)) {
                 EffectsUtils.PlayConnectionChangedSound(ct, false);
             }
             return true;
@@ -139,5 +142,17 @@ public class BtUtils {
             System.out.println("failed sending data");
             e.printStackTrace();
         }
+    }
+
+    static public boolean CanBeComputer(BluetoothDevice device) {
+        int majorClass = device.getBluetoothClass().getMajorDeviceClass();
+
+        switch (majorClass) {
+            case BluetoothClass.Device.Major.COMPUTER:
+            case BluetoothClass.Device.Major.MISC:
+            case BluetoothClass.Device.Major.UNCATEGORIZED:
+                return true;
+        }
+        return false;
     }
 }

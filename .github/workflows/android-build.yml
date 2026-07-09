@@ -1,0 +1,62 @@
+name: Android Build
+
+on:
+  push:
+    branches:
+      - 'dev-android'
+
+defaults:
+  run:
+    working-directory: ./AndroidPart
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Leave ONLY clean v34 components
+        run: |
+          echo "=== Cleaning folder build-tools ==="
+          cd $ANDROID_HOME/build-tools
+          ls -1 .
+          echo "==="
+          find . -maxdepth 1 -mindepth 1 ! -name '34.0.0' -exec rm -rf {} +
+          ls -1 .
+          
+          echo "=== Cleaning folder platforms ==="
+          cd $ANDROID_HOME/platforms
+          ls -1 .
+          echo "==="
+          find . -maxdepth 1 -mindepth 1 ! -name 'android-34' -exec rm -rf {} +
+          ls -1 .
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.SIGNING_KEY }}" | base64 --decode > app/release-keystore.jks
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_FILE: release-keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: |
+            **/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error

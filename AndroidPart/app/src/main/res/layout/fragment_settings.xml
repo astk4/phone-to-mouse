@@ -24,7 +24,7 @@
               app:layout_constraintBottom_toBottomOf="@id/cursor_scale_seekbar"
               app:layout_constraintStart_toEndOf="@id/cursor_scale_text"
               android:text="20"
-              android:textSize="32dp"/>
+              android:textSize="32sp"/>
     <SeekBar
             android:id="@+id/cursor_scale_seekbar"
             android:layout_width="fill_parent"
@@ -50,7 +50,8 @@
             app:layout_constraintGuide_percent="0.5"/>
 
 
-    <Switch android:id="@+id/setting_reconnect_switch"
+    <android.widget.Switch
+            android:id="@+id/setting_reconnect_switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             app:layout_constraintTop_toTopOf="@id/reconnect_text"
@@ -64,35 +65,38 @@
                   app:layout_constraintTop_toTopOf="@id/theme_text"
                   app:layout_constraintBottom_toBottomOf="@id/theme_text"
                   app:layout_constraintStart_toEndOf="@id/center_guide">
-        <androidx.appcompat.widget.AppCompatSpinner
+        <android.widget.Spinner
                  android:id="@+id/theme_option_picker"
                  android:layout_width="wrap_content"
                  android:layout_height="wrap_content"
                  app:layout_constraintStart_toEndOf="@id/center_guide" android:minHeight="48dp"
                  tools:ignore="SpeakableTextPresentCheck"/>
-        <Switch
+        <android.widget.Switch
                 android:id="@+id/theme_switch"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/standard_button_height"/>
     </LinearLayout>
 
-    <androidx.appcompat.widget.AppCompatSpinner
+    <android.widget.Spinner
              android:id="@+id/language_picker"
              android:layout_width="wrap_content"
              android:layout_height="wrap_content"
              android:entries="@array/languages"
              app:layout_constraintStart_toEndOf="@id/center_guide"
              app:layout_constraintTop_toBottomOf="@id/theme_ui" android:minHeight="48dp"/>
-    <Switch
+    <android.widget.Switch
             android:id="@+id/setting_sound1_switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="@dimen/standard_button_height"
             app:layout_constraintStart_toEndOf="@id/center_guide"
             app:layout_constraintTop_toBottomOf="@id/language_picker"/>
-    <Switch
+    <android.widget.Switch 
             android:id="@+id/setting_sound2_switch"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="@dimen/standard_button_height"
             app:layout_constraintStart_toEndOf="@id/center_guide"
             app:layout_constraintTop_toBottomOf="@id/textview_conn_sound"/>
 

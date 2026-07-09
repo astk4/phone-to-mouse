@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="TargetDeviceTitle" parent="Widget.AppCompat.TextView">
+        <item name="layout_constraintLeft_toLeftOf">@null</item>
+    </style>
+</resources>
