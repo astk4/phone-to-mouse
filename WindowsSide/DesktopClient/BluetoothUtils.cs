@@ -1,41 +1,37 @@
-﻿using InTheHand.Net.Sockets;
+﻿using InTheHand.Net.Bluetooth;
+using InTheHand.Net.Sockets;
 using MouseSimTestEnvironment;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
-using System.Printing.IndexedProperties;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Windows.Threading;
 
 namespace DesktopClient
 {
     public class BluetoothUtils
     {
-        private const int maxDevices = 255, screenSizeAsForCpp = 65535;
+        private const int maxDevices = 255;
         private bool listenerStarted = false;
         public bool ListenerStarted { get { return listenerStarted; } }
         private bool connectedToPhone = false;
 
-        IList<BluetoothDeviceInfo> visibles = null;
-        IList<BluetoothDeviceInfo> paired = null;
-        private BluetoothDeviceInfo selectedForListening = null;
+        private IList<BluetoothDeviceInfo> visibles = Array.Empty<BluetoothDeviceInfo>();
+        private IList<BluetoothDeviceInfo> paired = Array.Empty<BluetoothDeviceInfo>();
 
-        BluetoothClient _clientForDiscovery = new BluetoothClient(),
-                        _clientOfSecondDevice=null;
-        BluetoothListener _listener;
+        private readonly BluetoothClient _clientForDiscovery = new BluetoothClient();
+        private BluetoothClient _clientOfSecondDevice = null!;
+
+        private readonly BluetoothListener _listener;
         public AsyncCallback OnDiscoverVisibleCompleted, OnDiscoverPairedCompleted,
                              OnClientFound;
         public event EventHandler OnDisconnected;
         public event EventHandler<WaitStartEventArgs> OnStartedWaitingForConnection;
 
-        private CanvasDrawer _drawer;
+        private readonly CanvasDrawer _drawer;
 
         public BluetoothUtils(CanvasDrawer drawer)
         {
@@ -44,12 +40,19 @@ namespace DesktopClient
             string guidStr = File.ReadAllText("guid.txt");
             _listener = new BluetoothListener(Guid.Parse(guidStr));
             
-            OnDiscoverPairedCompleted = new AsyncCallback(this.assignPaired);
-            OnDiscoverVisibleCompleted = new AsyncCallback(this.assignVisible);
+            OnDiscoverPairedCompleted = new AsyncCallback((result) => paired = endDiscoveryReturnPhones(result));
+            OnDiscoverVisibleCompleted = new AsyncCallback((result) => visibles = endDiscoveryReturnPhones(result));
 
             OnClientFound = new AsyncCallback((result) =>
             {
-                _clientOfSecondDevice = _listener.EndAcceptBluetoothClient(result);
+                try {
+                    _clientOfSecondDevice = _listener.EndAcceptBluetoothClient(result);
+                }
+                catch (SocketException)
+                {
+                    return; //happens when app is closed during waiting for connection
+                }
+
                 connectedToPhone = true;
 
                 SendScreenDimensions(_clientOfSecondDevice);
@@ -60,15 +63,14 @@ namespace DesktopClient
             });
         }
 
-
-        private void SendScreenDimensions(object stream)
+        private static void SendScreenDimensions(object stream)
         {
             int[] dimensions = new int[2] { Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height };
             byte[] arrBeingSent = new byte[dimensions.Length*sizeof(int)+1];
             arrBeingSent[0] = (byte)MouseCommands.Ratio;
             Buffer.BlockCopy(dimensions, 0, arrBeingSent, 1, arrBeingSent.Length-1);
 
-            BluetoothClient client = stream as BluetoothClient;
+            BluetoothClient client = (stream as BluetoothClient)!;
             client.GetStream().WriteAsync(arrBeingSent, 0, arrBeingSent.Length);
         }
 
@@ -89,13 +91,21 @@ namespace DesktopClient
 
         private void ListenAndCatchData(object obj)
         {
-            BluetoothClient cl = obj as BluetoothClient;
+            BluetoothClient cl = (obj as BluetoothClient)!;
             bool leftBtn = true;
             float xPercent = 0, yPercent = 0;
             while (connectedToPhone)
             {
+                int firstByteVal;
+                try {
+                    firstByteVal = cl.GetStream().ReadByte();
+                }
+                catch (IOException)
+                {
+                    connectedToPhone = listenerStarted = false;
+                    break;
+                }
 
-                int firstByteVal = cl.GetStream().ReadByte();
                 if(firstByteVal == -1) { continue; }
 
                 byte[] receiveBuffer;
@@ -120,7 +130,7 @@ namespace DesktopClient
         }
 
 #if DEBUG
-        private void debugShowArray(byte[] arr)
+        private static void debugShowArray(byte[] arr)
         {
             Debug.Write("[ ");
             foreach(byte b in arr)
@@ -195,7 +205,6 @@ namespace DesktopClient
                     }
                     break;
                 case MouseCommands.Down:
-                    //Debug.Write("mouse Down");
                     if(leftBtn) {
                         InputSimWrapper.left_key_down(xWinapi, yWinapi);
                     }
@@ -206,7 +215,6 @@ namespace DesktopClient
                     _drawer.BeginPolyline(xPercent, yPercent, leftBtn);
                     break;
                 case MouseCommands.Up:
-                    //Debug.Write("mous up");
                     if (leftBtn) {
                         InputSimWrapper.left_key_up(xWinapi, yWinapi);
                     }
@@ -236,6 +244,18 @@ namespace DesktopClient
             }
         }
 
+        private static bool DeviceCanBePhone(BluetoothDeviceInfo bdi)
+        {
+            switch(bdi.ClassOfDevice.MajorDevice)
+            {
+                case DeviceClass.Phone:
+                case DeviceClass.Uncategorized:
+                case DeviceClass.Miscellaneous:
+                    return true;
+            }
+            return false;
+        }
+
         public IEnumerable<string> VisibleDevicesNames
         {
             get { return visibles.Select(x => x.DeviceName); }
@@ -245,10 +265,10 @@ namespace DesktopClient
             get { return paired.Select(x => x.DeviceName); }
         }
 
-        private void assignVisible(IAsyncResult result) => visibles = _clientForDiscovery.EndDiscoverDevices(result);
-
-        private void assignPaired(IAsyncResult result) => paired = _clientForDiscovery.EndDiscoverDevices(result);
-
+        private IList<BluetoothDeviceInfo> endDiscoveryReturnPhones(IAsyncResult result)
+        {
+            return _clientForDiscovery.EndDiscoverDevices(result).Where(d => DeviceCanBePhone(d)).ToArray();
+        }
 
         public void DiscoverAll()
         {
@@ -265,8 +285,6 @@ namespace DesktopClient
         }
 
         public void CancelDiscoveryOfAll() => _clientForDiscovery.EndDiscoverDevices(null);
-
-        public void SelectDevice(int index) => selectedForListening = paired[index];
 
         public void StartWaitingForConnection(bool waitForReconnect = false)
         {

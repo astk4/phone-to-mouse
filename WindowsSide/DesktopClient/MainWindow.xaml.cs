@@ -12,7 +12,7 @@ namespace DesktopClient
     public partial class MainWindow : Window
     {
         BluetoothUtils bluetoothUtilsInstance;
-        CloseConfirmationWindow linkedCloseConfirmWindow = null;
+        CloseConfirmationWindow linkedCloseConfirmWindow = null!;
         bool closeConfirmed = false;    
         public MainWindow()
         {
@@ -51,6 +51,8 @@ namespace DesktopClient
             {
                 this.Dispatcher.Invoke(() => 
                 { 
+                    if (this.closeConfirmed) { return; } //case when window is closed during waiting for connection
+
                     canvas.Background = Brushes.White;
                     closeConnectionBtn.IsEnabled = true;
                     waitStatusText.Text = string.Empty;
@@ -81,9 +83,8 @@ namespace DesktopClient
         private void adjustButtons(bool completed)
         {
             foreach (UIElement child in discoverBtnsPanel.Children) { child.IsEnabled = completed; }
-            //cancelDiscBtn.IsEnabled = !completed;
         }
-        private void showLoading(StackPanel container, bool show)
+        private static void showLoading(StackPanel container, bool show)
         {
             ListBox lb = container.Children.OfType<ListBox>().First();
             MediaElement img = container.Children.OfType<MediaElement>().First();
@@ -132,15 +133,14 @@ namespace DesktopClient
 
         private void MediaElement_MediaEnded(object sender, RoutedEventArgs e)
         {
-            (sender as MediaElement).Position = new TimeSpan(0, 0, 0, 0, 1);
-            (sender as MediaElement).Play();
+            (sender as MediaElement)!.Position = new TimeSpan(0, 0, 0, 0, 1);
+            (sender as MediaElement)!.Play();
         }
 
         private void pairedListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             openConnectionBtn.IsEnabled = true;
-            selectedPairedDeviceTxt.Text = (sender as ListBox).SelectedItem.ToString();
-            bluetoothUtilsInstance.SelectDevice((sender as ListBox).SelectedIndex);
+            selectedPairedDeviceTxt.Text = (sender as ListBox)!.SelectedItem.ToString();
         }
 
         private void closeConnectionBtn_Click(object sender, RoutedEventArgs e)
@@ -193,9 +193,9 @@ namespace DesktopClient
             this.MinHeight = actualHeightsSum + canvasBdr.ActualHeight;
         }
 
-        private void settingFromCheckbox(Action<bool> setter, object sender)
+        private static void settingFromCheckbox(Action<bool> setter, object sender)
         {
-            setter((sender as CheckBox).IsChecked.Value);
+            setter((sender as CheckBox)!.IsChecked.GetValueOrDefault());
             Properties.Settings.Default.Save();
         }
 

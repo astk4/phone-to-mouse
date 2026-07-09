@@ -9,10 +9,10 @@ namespace DesktopClient
 {
     public class CanvasDrawer
     {
-        Canvas canvas;
-        TextBlock gestureInfoTextblock;
+        private readonly Canvas canvas;
+        private readonly TextBlock gestureInfoTextblock;
 
-        static private Polyline _crtPoly = null;
+        static private Polyline _crtPoly = null!;
         static private Brush leftKeyBrush = new SolidColorBrush(Colors.Blue),
                              rightKeyBrush = new SolidColorBrush(Colors.OrangeRed),
                              noKeyBrush = new SolidColorBrush(Colors.DarkGray);
@@ -28,7 +28,8 @@ namespace DesktopClient
         {   
             canvas.Dispatcher.Invoke(() => {
                 Ellipse point = null;
-                Brush fill = leftBtn.HasValue ? (leftBtn.Value ? leftKeyBrush : rightKeyBrush) : noKeyBrush;
+                Brush usedKeyBrush = leftBtn.GetValueOrDefault() ? leftKeyBrush : rightKeyBrush;
+                Brush fill = leftBtn.HasValue ? usedKeyBrush : noKeyBrush;
             
                 if (canvas.Children.Count != 1 || !(canvas.Children[0] is Ellipse))
                 {
